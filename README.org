@@ -1,92 +1,89 @@
-* Piano
+* Piano Project: 25-Key Capacitive Touch Piano
 ** Equipment
-1) Capacitive touch sensing buttons: [[https://thepihut.com/products/adafruit-mpr121-12-key-capacitive-touch-sensor-gator-breakout?srsltid=AfmBOop4UWYAdam-li0SrOM29a0d_IlE4toSjazFwh1VwX3HDuSYpOKK][Adafruit MPR121 12-key sensor]]
-   1) with reference:
-   2)[[https://learn.adafruit.com/adafruit-mpr121-12-key-capacitive-touch-sensor-breakout-tutorial/downloads][Adafruit reference sheets]]
-2) £6.70 Copper, aluminium foil/ pennies/ 1oz copper coins
-3) 3 to 5 multiplexers: Multiplexer CD4051BE - £3.05 for 5
-4) Has eight ADC input pins:
-   1) PA0 to PA7
-      1) Need 25 keys
-      2) Need five pins – five multiplexers with all eight pins connected to each keyboard pin
-         1) for raw ADC data
-      3) Need three more pins on the il matto - to actually multiplex the five multiplexers
-         1) all the multiplexers are connected to the same three pins.
-         2) connect the multiplexers to:
-            1) 3.3 voltage
-            2) V_ss pin
-            3) INH pin to GND.
-      4) One more pin
-         1) set as the PWM output
-         2) connect to speaker/ headphones for sound output
-   2) four ADC input pins are free
-5) Speaker/ headphones (already)
-6) Wooden board - [[https://www.etsy.com/uk/listing/1158313998/wooden-squares-craft-blanks?ls=s&ga_order=most_relevant&ga_search_type=all&ga_view_type=gallery&ga_search_query=small+square+wooden+pieces&ref=sr_gallery-1-3&sts=1&loc=1&local_signal_search=1&content_source=81d41547-bc22-4f61-8984-d2c5951e36c3%253ALT5379e2e4378aca9a8b633ad215537358eacd7ce6&organic_search_click=1&logging_key=81d41547-bc22-4f61-8984-d2c5951e36c3%3ALT5379e2e4378aca9a8b633ad215537358eacd7ce6&variation0=2445593624&variation1=2470440269][Etsy]]
-** My setup
-*** Construction
-1. The Multiplexers (4 x CD4051BE)
-   1. Place all four chips in a row on your breadboard. Each chip has 16 pins.
-      1. Power & Enable (Shared): Pin 16 (VDD): All to 3.3V.
-         1. Pins 6 (INH), 7 (VEE), 8 (VSS): All to GND
-      2. Address Selection (Shared): Pin 11 (A): All to PCO
-         1. Pin 10 (B): All to PC1.
-         2. Pin 9 (C): All to PC2.
-      3. Common Signal Output (Unique):
-         1. MUX 1 Pin 3 → PA0.
-         2. MUX 2 Pin 3 → PA1.
-         3. MUX 3 Pin 3 → PA2.
-         4. MUX 4 Pin 3 → PA3.
-      4. Inputs (Pins 13, 14, 15, 12, 1, 5, 2, 4):
-         1. Connect to your keys.
-            1. MUX 1 handles Keys 1–8,
-            2. MUX 2 handles 9–16
-2. The Analog Charge Path (The 10MΩ Resistors)
-   1. The Driver: Connect PC3 of the il matto to a long "rail" (a row) on the breadboard.
-   2. The Resistors: Take 25 resistors. Plug one end of every resistor into that PC3 rail.
-   3. The Junction: The other end of each resistor must connect to two things:
-      1. The flexible wire going to the specific Copper Key.
-      2. The specific Input Pin on the Multiplexer for that key.
-3. The Audio Output
-   1. Connect PD7 to a 100Ω resistor.
-   2. Connect the other end of that resistor to the "Tip" of your headphone jack.
-   3. Connect the "Sleeve" of the headphone jack to GND.
-*** C-Code
-1. Function One: ~Initialize_System~
-   1. Configure the ATmega644P hardware registers.
-      1. Set PORT C pins 0, 1, 2 (Address) and 3 (Driver) as Outputs.
-      2. Set PORT D pin 7 as an Output (for PWM).
-      3. Initialize the ADC (il matto Ref 2.3): Set the voltage reference to AVCC and the prescaler to 64 (this slows the ADC down to a readable frequency).
-      4. Initialize Timer 2 (il matto Ref 2.5): Set it to Fast PWM mode. This creates the high-frequency carrier for your sound.
-      5. Initialize Timer 0: Set it to trigger an Interrupt (ISR) roughly 20,000 times per second.
-2. Function Two: ~Audio_Mixer_Interrupt~ (The ISR)
-   1. Create polyphonic sound in real-time.
-      1. Create a "Sum" variable starting at zero.
-      2. Loop through all 25 keys. If a key is marked as "Active":
-      3. Update that key's Phase Accumulator (add its frequency value to its current position).
-      4. Look up the volume level from your Wavetable using that phase.
-      5. Add that level to the "Sum".
-      6. Divide the "Sum" by the number of active keys (this prevents the sound from distorting).
-      7. Write the final result to the OCR2A register. This physically moves the speaker diaphragm to create the wave.
-3. Function 3: ~Measure_Key_Capacitance~
-   1. Perform RC timing
-      1. Set the A, B, C pins on PORT C to the address of the key you want.
-      2. *Discharge*: Set the corresponding ADC pin (PA0-PA3) to a digital Output and drive it LOW for 10 microseconds. This empties the "capacitor" (the copper key).
-      3. *Charge*: Switch that ADC pin to an Input (it now acts like a voltmeter).
-      4. *The Pulse*: Turn PC3 (Driver) to HIGH. Electricity starts flowing through the 10MΩ resistor to the key.
-      5. *The Delay*: Wait for a very specific time (approx. 5 to 8 microseconds).
-      6. *The Measurement*: Trigger the ADC conversion immediately.
-      7. *The Result*: Return the 10-bit number. If someone is touching the key, the number will be lower because the key charged up slower.
-4. Function 4: ~Calibrate_Piano~
-   1. Establish "Baseline" values for a quiet room
-      1. Wait 1 second after power-up.
-      2. Run the ~Measure_Key_Capacitance~ function 10 times for every key.
-      3. Store the average value for each key in a "Baseline Array." This is the "Untouched" state.
-5. Function 5: ~Main_Execution_Loop~
-   1. The infinite loop that scans the keyboard.
-      1. Run ~Calibrate_Piano~ once.
-      2. Start a ~while(1)~ loop:
-      3. For each of the 25 keys, call ~Measure_Key_Capacitance~.
-      4. Compare the result to that key's stored Baseline.
-      5. If the value is less than 90% of the baseline, mark that key as Active in a global array.
-      6. Otherwise, mark it as Inactive.
-      7. The ~Audio_Mixer_Interrupt~ will automatically see these "Active" marks and start playing the notes.
+- [ ] 5 x Multiplexers: *74HC4051* 8-Channel Analog Mux
+- [ ] 1 x il matto Development Board (ATmega644P)
+- [ ] 25 x 10MΩ Resistors (for touch sensing)
+- [ ] 1 x 100Ω Resistor (for audio protection)
+- [ ] Copper Tape (Double-sided conductive adhesive)
+- [ ] Basswood Sheets (30x30cm)
+- [ ] 3.5mm Headphone Jack or Speaker
+
+** Pin Mapping (ATmega644P)
+*** Analog Inputs (ADC)
+Used to read the voltage from each multiplexer.
+- MUX 1 (Keys 1-8)  -> PA0
+- MUX 2 (Keys 9-16) -> PA1
+- MUX 3 (Keys 17-24)-> PA2
+- MUX 4 (Key 25)    -> PA3
+
+*** Control & Output
+- Address Pins (Shared): PC0 (A), PC1 (B), PC2 (C)
+- Charge Driver Pin: PC3 (Pulses the RC circuit)
+- Audio Output: PD7 (OC2A PWM)
+
+** Construction Steps
+*** 1. The Multiplexers (74HC4051)
+Place the modules on the breadboard. If using DIP chips, ensure they straddle the center notch.
+
+**** Power & Enable (Shared across all chips)
+- [ ] Pin 16 (VCC): Connect to 5V rail.
+- [ ] Pin 8 (GND) & Pin 7 (VEE): Connect to GND rail.
+- [ ] Pin 6 (INH): Connect to GND (Enables the chip).
+
+**** Address Selection (Shared across all chips)
+- [ ] Pin 11 (A): Connect to PC0.
+- [ ] Pin 10 (B): Connect to PC1.
+- [ ] Pin 9 (C): Connect to PC2.
+
+**** Signal Output (Unique per chip)
+- [ ] MUX 1 Pin 3 (COM): Connect to PA0.
+- [ ] MUX 2 Pin 3 (COM): Connect to PA1.
+- [ ] MUX 3 Pin 3 (COM): Connect to PA2.
+- [ ] MUX 4 Pin 3 (COM): Connect to PA3.
+
+*** 2. The Capacitative Pull-up path.
+- [ ] Connect a 10MΩ resistor between *PA1* and *VCC*.
+  - [ ] Connect a 10MΩ resistor between *PA2* and *VCC*.
+  - [ ] Connect a 10MΩ resistor between *PA3* and *VCC*.
+- [ ] *The Keys:* Connect each copper tape key *directly* to a Mux input pin (Pins 13, 14, 15, 12, 1, 5, 2, 4).
+
+*** 3. Audio Output
+- [ ] Connect PD7 to a 100Ω resistor.
+- [ ] Connect the other end of the resistor to the *Tip* (and *Ring* for stereo) of your headphone jack.
+- [ ] Connect the *Sleeve* of the jack to GND.
+
+*** 4. Physical Keyboard Construction
+- [ ] Cut 25 strips of copper tape.
+- [ ] Apply to the Basswood board with consistent spacing.
+- [ ] Solder a wire to the corner of each strip.
+- [ ] Route wires back to the breadboard "Junctions" created in Step 2.
+** Code
+1. Setup (Initialization)
+   1. [ ] Multiplexer Address Bus: Set bits 0, 1, and 2 of DDRC to 1 (Output).
+   2. Signal Inputs: Ensure bits 0-3 of DDRA are 0 (Input).
+   3. Analog Prep: Write 1s to bits 0-3 of DIDR0 to disable digital buffers on the sensing pins.
+   4. ADC Config: - Set ADCSRA bits for ADEN (Enable) and a prescaler of 64 (ADPS2 and ADPS1).
+2. Set ADMUX for AVCC reference (REFS0).
+   1. Timer 1 (Sound Engine):
+      1. Set WGM12 in TCCR1B for CTC mode.
+      2. Set CS11 in TCCR1B for a Prescaler of 8.
+      3. Set DDRD bit 5 to 1 (Output) for the headphone signal.
+Note: Do NOT enable COM1A0 yet; only enable it when a touch is detected.
+
+1. Main Loop (Detection)
+   1. [ ] Address Cycle: Use a 'for' loop to iterate from 0 to 7.
+   2. [ ] Write index to PORTC bits 0-2 to select the mux channel.
+   3. [ ] Delay 10us to settle the 10M pull-up voltage.
+   4. [ ] ADC Scan: Inside the address loop, nested 'for' loop for channels 0-3 (PA0-PA3).
+   5. [ ] Update ADMUX channel selection bits.
+   6. [ ] Start conversion (Set ADSC) and wait for completion.
+   7. [ ] Touch Logic: - Check if ADC result is < THRESHOLD (Voltage drops when finger adds capacitance).
+   8. [ ] If touch found, calculate Key Index: $(Mux_Number * 8) + Address$.
+
+2. Sound Generation
+   1. [ ] Update Frequency:
+      1. If Key Index is 0-24, set OCR1A to the value from your Python-generated '$note_{table}$'.
+      2. Connect the timer to the pin by setting COM1A0 in TCCR1A.
+   2. [ ] Silence Logic:
+      1. If no keys are detected (Index = -1), clear COM1A0 in TCCR1A to stop the toggle.
+      2. Set PD5 low to ensure the speaker/headphone line sits at 0V.
