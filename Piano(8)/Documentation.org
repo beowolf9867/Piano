@@ -1,0 +1,80 @@
+#+title: Piano with 32 keys
+* Documentation
+** 8 Key project
+*** Specification
+- A neat breadboard with wires at a 90 degree angle making it easy to see and understand.
+- Use one mux.
+- Pressing a capacitative switch
+- Will generate a sound on PD5, connected to piezo speaker
+*** Method
+- connecting a copper strip to the adc pin (PA0 to PA7)
+*** Code
+ - flip adc pin betwen output (charge/drain) and input (measure)
+   - set output and pull low - drain
+   - read dummy channel - charge
+   - flip back to input, start adc conversion, internal charge will flow onto pad
+*** how this works
+- internal tiny fixed capacitor in the adc
+- external copper pad
+  - copper pad is low - emptying charge
+  - look at the reference voltage and charge
+  - now flipped from output to input
+    - case a: no finger, small internal capacitor
+    - case b: finger present, adds alot more voltage to leave - lower voltage
+***  ADC on the il matto
+- converts an analog input voltage into a 10 bit digital value through successive approximation.
+  - minimum value = gnd
+  - maximum value  = reference value = AREF - 1
+- single-ended inputs to ADC
+- enable
+  - setting ADEN in ADCSRA
+  - generates 10 bit result
+    - present in ADCH and ADCL
+      - can be shifted, by setting ADLAR in ADMUX
+- conversion
+  - write 1 to ADSC
+    - cleared when conversion is complete
+  - auto triggering - ADATE in ADCSRB
+    - when +ve edge occurs on signal, ADC prescaler reset, conversion started
+    - starting conversion at fixed intervals
+  - ADC interrupt flag - adc in free running mode
+- Prescaling
+    -
+** Rough operation
+1. each key connected to each adc input pin (PA0 to PA7)
+2. enable
+3. operate in free running mode
+4. change channel after each conversion
+5. after each conversion, check the result in ADCH
+   1. if 1 - then key pressed and generate sound
+   2. if 0 - then no key pressed and silence
+** Sound generation
+Using timer 1 (16-bit timer)
+- Tone generation and precise frequencies.
+*** What happens?
+Starts with the system clock at 12MHz, but since this is too fast to hear, it is
+usually divided by a prescaler of about 8.
+Set it to Phase and Frequency Correct PWM mode, where the counter (TCNT1) performs
+a dual-slope operation:
+1. counts from BOTTOM to defined value in OCR1A.
+2. then counts back down to BOTTOM
+The frequency of the sound depends on the speed of this up-down cycle
+Higher OCR1A value - lower frequency and vice versa
+The frequency can be calculated through:
+f = (f_cpu / (2 x N x 2 x TOP)),
+where N is the prescaler and TOP is the value in the OCR1A register.
+The frequency is presented to OC1A/PORTDPIN5.
+The hardware flips this bit, whenever the value in OCR1A is reached,
+creating a square wave going from 0 to 1. 
+*** Code
+**** Setup
+Speaker - set as an output
+Toggle mode - COM1A1=0, COM1A0=1 (bits 7 and 6)
+Waveform Generation (mode 9) - WGM13=1, WGM12=0, WGM11=0, WGM10=1
+Prescaler of 8 - CS12=0, CS11=1, CS10=0
+
+**** Tone
+f = (F_CPU / (2 * PRESCALER * 2 * TOP)), using unsigned long, then convert
+to unsigned 16 bit
+write the frequency needed in the OCR1A register every time
+a new pitch is needed
