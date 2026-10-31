@@ -7,7 +7,7 @@
 - 1 x 100Ω Resistor (for audio protection)
 - Copper Tape (Double-sided conductive adhesive)
 - Basswood Sheets (30x30cm)
-- 3.5mm Headphone Jack or Speaker
+- 3.5mm Headphone Jack
 
 ** Pin Mapping (ATmega644P)
 *** Analog Inputs (ADC)
@@ -22,13 +22,13 @@ Used to read the voltage from each multiplexer.
 - Charge Driver Pin: PC3 
 - Audio Output: PD7 (OC2A PWM)
 
-** Construction Steps
+** Construction
 *** 1. The Multiplexers (74HC4051)
 
 **** Power & Enable (Shared across all chips)
 - Pin 16 (VCC): 5V rail.
 - Pin 8 (GND) & Pin 7 (VEE): GND rail.
-- [ ] Pin 6 (INH): GND 
+- Pin 6 (INH): GND 
 
 **** Address Selection (Shared across all chips)
 - Pin 11 (A): PC0.
@@ -41,7 +41,7 @@ Used to read the voltage from each multiplexer.
 - MUX 3 Pin 3 (COM): PA2.
 - MUX 4 Pin 3 (COM): PA3.
 
-*** 2. The Capacitative Pull-up path.
+*** 2. Capacitive Touch Keys
 - 10MΩ resistor between *PA1* and *VCC*.
   - 10MΩ resistor between *PA2* and *VCC*.
   - 10MΩ resistor between *PA3* and *VCC*.
@@ -52,10 +52,9 @@ Used to read the voltage from each multiplexer.
 - other end to the *Tip* (and *Ring* for stereo) of headphone jack.
 - *Sleeve* of the jack to GND.
 
-*** 4. Physical Keyboard Construction
+*** 4. Physical Keyboard
 - Cut 25 strips of copper tape.
 - Apply to the Basswood board with consistent spacing
-
 
 ** Future Improvements
 - octave up and octave down buttons to shift the note table up or down by 12 semitones
