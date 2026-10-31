@@ -1,13 +1,13 @@
 * Piano Project: 25-Key Capacitive Touch Piano
 
 ** Equipment
-- [ ] 5 x Multiplexers: *74HC4051* 8-Channel Analog Mux
-- [ ] 1 x il matto Development Board (ATmega644P)
-- [ ] 25 x 10MΩ Resistors (for touch sensing)
-- [ ] 1 x 100Ω Resistor (for audio protection)
-- [ ] Copper Tape (Double-sided conductive adhesive)
-- [ ] Basswood Sheets (30x30cm)
-- [ ] 3.5mm Headphone Jack or Speaker
+- 5 x Multiplexers: *74HC4051* 8-Channel Analog Mux
+- 1 x il matto Development Board (ATmega644P)
+- 25 x 10MΩ Resistors (for touch sensing)
+- 1 x 100Ω Resistor (for audio protection)
+- Copper Tape (Double-sided conductive adhesive)
+- Basswood Sheets (30x30cm)
+- 3.5mm Headphone Jack or Speaker
 
 ** Pin Mapping (ATmega644P)
 *** Analog Inputs (ADC)
@@ -26,67 +26,39 @@ Used to read the voltage from each multiplexer.
 *** 1. The Multiplexers (74HC4051)
 
 **** Power & Enable (Shared across all chips)
-- [ ] Pin 16 (VCC): 5V rail.
-- [ ] Pin 8 (GND) & Pin 7 (VEE): GND rail.
+- Pin 16 (VCC): 5V rail.
+- Pin 8 (GND) & Pin 7 (VEE): GND rail.
 - [ ] Pin 6 (INH): GND 
 
 **** Address Selection (Shared across all chips)
-- [ ] Pin 11 (A): PC0.
-- [ ] Pin 10 (B): PC1.
-- [ ] Pin 9 (C): PC2.
+- Pin 11 (A): PC0.
+- Pin 10 (B): PC1.
+- Pin 9 (C): PC2.
 
-**** Signal Output (Unique per chip)
-- [ ] MUX 1 Pin 3 (COM): Connect to PA0.
-- [ ] MUX 2 Pin 3 (COM): Connect to PA1.
-- [ ] MUX 3 Pin 3 (COM): Connect to PA2.
-- [ ] MUX 4 Pin 3 (COM): Connect to PA3.
+**** Signal Output
+- MUX 1 Pin 3 (COM): PA0.
+- MUX 2 Pin 3 (COM): PA1.
+- MUX 3 Pin 3 (COM): PA2.
+- MUX 4 Pin 3 (COM): PA3.
 
 *** 2. The Capacitative Pull-up path.
-- [ ] 10MΩ resistor between *PA1* and *VCC*.
-  - [ ] 10MΩ resistor between *PA2* and *VCC*.
-  - [ ] 10MΩ resistor between *PA3* and *VCC*.
-- [ ] *The Keys:* copper tape key to mux input pin (Pins 13, 14, 15, 12, 1, 5, 2, 4).
+- 10MΩ resistor between *PA1* and *VCC*.
+  - 10MΩ resistor between *PA2* and *VCC*.
+  - 10MΩ resistor between *PA3* and *VCC*.
+- *The Keys:* copper tape key to mux input pin (Pins 13, 14, 15, 12, 1, 5, 2, 4).
 
 *** 3. Audio Output
-- [ ] PD7 to a 100Ω resistor.
-- [ ] Connect the other end of the resistor to the *Tip* (and *Ring* for stereo) of headphone jack.
-- [ ] *Sleeve* of the jack to GND.
+- PD7 to a 100Ω resistor.
+- other end to the *Tip* (and *Ring* for stereo) of headphone jack.
+- *Sleeve* of the jack to GND.
 
 *** 4. Physical Keyboard Construction
-- [ ] Cut 25 strips of copper tape.
-- [ ] Apply to the Basswood board with consistent spacing
-** Code
-1. Setup (Initialization)
-   1. [ ] Multiplexer Address Bus: Set bits 0, 1, and 2 of DDRC to 1 (Output).
-   2. Signal Inputs: Ensure bits 0-3 of DDRA are 0 (Input).
-   3. Write 1s to bits 0-3 of DIDR0 to disable digital buffers on the sensing pins.
-   4. Set ADCSRA bits for ADEN (Enable) and a prescaler of 64 (ADPS2 and ADPS1).
-2. Set ADMUX for AVCC reference (REFS0).
-   1. Timer 1 (Sound Engine):
-      1. Set WGM12 in TCCR1B for CTC mode.
-      2. Set CS11 in TCCR1B for a Prescaler of 8.
-      3. Set DDRD bit 5 to 1 (Output) for the headphone signal.
+- Cut 25 strips of copper tape.
+- Apply to the Basswood board with consistent spacing
 
-1. Main Loop (Detection)
-   1. [ ] Use a 'for' loop to iterate from 0 to 7.
-   2. [ ] Write index to PORTC bits 0-2 to select the mux channel.
-   3. [ ] Delay 10us to settle the 10M pull-up voltage.
-   4. [ ] Inside the address loop, nested 'for' loop for channels 0-3 (PA0-PA3).
-   5. [ ] Update ADMUX channel selection bits.
-   6. [ ] Start conversion (Set ADSC) and wait for completion.
-   7. [ ] Check if ADC result is < THRESHOLD (Voltage drops when finger adds capacitance).
-   8. [ ] If touch found, calculate Key Index: $(Mux_Number * 8) + Address$.
-
-2. Sound Generation
-   1. [ ] Update Frequency:
-      1. If Key Index is 0-24, set OCR1A to the value from '$note_{table}$'.
-      2. Connect the timer to the pin by setting COM1A0 in TCCR1A.
-   2. [ ] Silence Logic:
-      1. If no keys are detected (Index = -1), clear COM1A0 in TCCR1A to stop the toggle.
-      2. Set PD5 low to ensure the speaker/headphone line sits at 0V.
 
 ** Future Improvements
-- [ ] octave up and octave down buttons to shift the note table up or down by 12 semitones
-- [ ] home button to reset the octave shift to 0
-- [ ] add a lock mechanism to prevent multiple octave shifts from a single button press
-- [ ] add a function to play a note for a set duration, then stop, to allow for more musical phrases 
+- octave up and octave down buttons to shift the note table up or down by 12 semitones
+- home button to reset the octave shift to 0
+- add a lock mechanism to prevent multiple octave shifts from a single button press
+- add a function to play a note for a set duration, then stop, to allow for more musical phrases 
